@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Glow</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+body{background:#050505;min-height:100vh;display:flex;justify-content:center;align-items:center;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 20%,rgba(255,0,255,.08),transparent 40%),radial-gradient(circle at 80% 30%,rgba(0,255,255,.08),transparent 40%),radial-gradient(circle at 50% 80%,rgba(0,255,120,.08),transparent 40%);animation:bgMove 10s infinite alternate ease-in-out}
+@keyframes bgMove{from{transform:scale(1)}to{transform:scale(1.2) rotate(6deg)}}
+.game-container{position:relative;z-index:5;display:flex;flex-direction:column;align-items:center;text-align:center}
+.game-title{font-size:58px;font-weight:900;letter-spacing:4px;text-transform:uppercase;color:#fff;margin-bottom:10px;animation:glowTitle 2s infinite alternate;text-shadow:0 0 8px #fff,0 0 18px #0ff,0 0 35px #0ff,0 0 70px #0ff}
+.game-title span{color:#0ff}
+.subtitle{color:#ddd;margin-bottom:35px}
+@keyframes glowTitle{from{text-shadow:0 0 8px #fff,0 0 18px #0ff,0 0 35px #0ff}to{text-shadow:0 0 12px #fff,0 0 30px #0ff,0 0 60px #0ff,0 0 120px #0ff}}
+.grid{display:grid;grid-template-columns:repeat(3,140px);grid-template-rows:repeat(3,140px);gap:25px}
+.pad{width:140px;height:140px;border-radius:20px;background:#111;border:2px solid #2c2c2c;display:flex;justify-content:center;align-items:center;color:transparent;font-size:22px;font-weight:bold;cursor:pointer;transition:.25s}
+.pad:hover{background:#181818;transform:scale(1.04)}
+.pad.flash{transform:scale(.96)}
+.red.opened,.red.matched{background:#ff3b3b;color:#fff}.green.opened,.green.matched{background:#00ff80;color:#fff}.blue.opened,.blue.matched{background:#00b7ff;color:#fff}.yellow.opened,.yellow.matched{background:#ffe600;color:#000}.purple.opened,.purple.matched{background:#b800ff;color:#fff}.orange.opened,.orange.matched{background:#ff7b00;color:#fff}.cyan.opened,.cyan.matched{background:#00fff7;color:#000}.pink.opened,.pink.matched{background:#ff00aa;color:#fff}.white.opened,.white.matched{background:#fff;color:#000}
+#winner{position:fixed;inset:0;#winner{
+
+position:fixed;
+
+inset:0;
+
+display:flex;
+
+flex-direction:column;
+
+justify-content:center;
+
+align-items:center;
+
+background:
+    radial-gradient(circle,#101010,#000);
+
+z-index:9999;
+
+};display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:9999}
+.winner-photo{
+
+width:min(90vw,420px);
+
+max-height:75vh;
+
+object-fit:contain;
+
+border-radius:20px;
+
+border:3px solid rgba(255,255,255,.15);
+
+box-shadow:
+    0 0 20px rgba(0,255,255,.35),
+    0 0 45px rgba(0,255,255,.25);
+
+animation:photoReveal .8s ease;
+
+}
+.play-again{
+
+margin-top:25px;
+
+padding:10px 24px;
+
+font-size:15px;
+
+font-weight:bold;
+
+border:none;
+
+border-radius:50px;
+
+cursor:pointer;
+
+color:white;
+
+background:rgba(255,255,255,.12);
+
+backdrop-filter:blur(8px);
+
+transition:.3s;
+
+}
+
+.play-again:hover{
+
+background:#00eaff;
+
+color:black;
+
+transform:scale(1.05);
+
+box-shadow:0 0 20px #00eaff;
+
+}
+@keyframes photoReveal{
+
+from{
+
+    opacity:0;
+
+    transform:scale(.8);
+
+}
+
+to{
+
+    opacity:1;
+
+    transform:scale(1);
+
+}
+
+}
+</style>
+</head>
+<body>
+<div class="game-container">
+<h1 class="game-title">MEMORY <span>GLOW</span></h1>
+<p class="subtitle">Find 3 Matching Names in a Row</p>
+<div class="grid"></div>
+</div>
+<script>
+const names=["Abedin","Abedin","Abedin","Hasan","Hasan","Hasan","Manalundong","Manalundong","Manalundong"];
+const colors=["red","green","blue","yellow","purple","orange","cyan","pink","white"];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}shuffle(names);
+const ctx=new (window.AudioContext||window.webkitAudioContext)();
+const victory=new Audio("musex.mp3");victory.loop=true;victory.volume=.45;
+const notes=[261.63,293.66,329.63,349.23,392,440,493.88,523.25,587.33];
+function play(f){const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(.0001,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.35,ctx.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.45);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.45)}
+const grid=document.querySelector(".grid");let current=[],solved=0;
+for(let i=0;i<9;i++){let d=document.createElement("div");d.className=`pad ${colors[i]}`;d.dataset.name=names[i];d.dataset.note=notes[i];d.textContent="?";grid.appendChild(d);}
+document.querySelectorAll(".pad").forEach(p=>p.onclick=function(){ctx.resume();if(this.classList.contains("matched")||this.classList.contains("opened"))return;play(this.dataset.note);this.classList.add("opened","flash");this.textContent=this.dataset.name;setTimeout(()=>this.classList.remove("flash"),150);current.push(this);if(current.length>=2&&current[0].dataset.name!==current.at(-1).dataset.name){setTimeout(()=>{current.forEach(b=>{b.textContent="?";b.classList.remove("opened")});current=[]},800);return;}if(current.length===3){current.forEach(b=>b.classList.add("matched"));current=[];if(++solved===3){victory.play();document.body.insertAdjacentHTML("beforeend",`<div id="winner"><img src="juan.jpg" class="winner-photo" alt="Winner"><button class="play-again" onclick="location.reload()">🔄 Play Again</button></div>`)}}});
+</script>
+</body>
+</html>
