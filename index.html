@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3-in-a-Row Memory Game</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#050505;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+}
+
+/* Animated background */
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:
+    radial-gradient(circle at 20% 20%,rgba(255,0,255,.08),transparent 40%),
+    radial-gradient(circle at 80% 30%,rgba(0,255,255,.08),transparent 40%),
+    radial-gradient(circle at 50% 80%,rgba(0,255,120,.08),transparent 40%);
+    animation:bgMove 10s infinite alternate ease-in-out;
+}
+
+@keyframes bgMove{
+
+from{
+transform:scale(1);
+}
+
+to{
+transform:scale(1.2) rotate(6deg);
+}
+
+}
+
+.grid{
+
+    position:relative;
+    z-index:2;
+
+    display:grid;
+    grid-template-columns:repeat(3,140px);
+    grid-template-rows:repeat(3,140px);
+
+    gap:25px;
+
+}
+
+.pad{
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    width:140px;
+    height:140px;
+
+    border-radius:20px;
+
+    color:white;
+    font-size:22px;
+    font-weight:bold;
+
+    cursor:pointer;
+    user-select:none;
+
+    transition:.2s;
+
+    border:2px solid rgba(255,255,255,.15);
+
+}
+
+/* Hover */
+
+.pad:hover{
+transform:scale(1.05);
+}
+
+/* Glow when matched */
+
+.pad.matched{
+
+transform:scale(1.03);
+filter:brightness(2.2);
+
+}
+
+/* Click effect */
+
+.pad.flash{
+
+filter:brightness(3);
+
+}
+
+/* COLORS */
+
+.red{
+background:#ff3b3b;
+box-shadow:0 0 20px #ff3b3b;
+}
+
+.green{
+background:#00ff80;
+box-shadow:0 0 20px #00ff80;
+}
+
+.blue{
+background:#00b7ff;
+box-shadow:0 0 20px #00b7ff;
+}
+
+.yellow{
+background:#ffe600;
+box-shadow:0 0 20px #ffe600;
+}
+
+.purple{
+background:#c300ff;
+box-shadow:0 0 20px #c300ff;
+}
+
+.orange{
+background:#ff7b00;
+box-shadow:0 0 20px #ff7b00;
+}
+
+.cyan{
+background:#00fff7;
+box-shadow:0 0 20px #00fff7;
+}
+
+.pink{
+background:#ff00aa;
+box-shadow:0 0 20px #ff00aa;
+}
+
+.white{
+background:white;
+color:black;
+box-shadow:0 0 20px white;
+}
+
+@media(max-width:700px){
+
+.grid{
+
+grid-template-columns:repeat(3,90px);
+grid-template-rows:repeat(3,90px);
+gap:18px;
+
+}
+
+.pad{
+
+width:90px;
+height:90px;
+font-size:16px;
+
+}
+#winner{
+
+position:fixed;
+inset:0;
+
+background:rgba(0,0,0,.92);
+
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+
+z-index:9999;
+
+animation:fade .5s;
+
+}
+
+#winner h1{
+
+font-size:60px;
+color:#fff;
+
+text-shadow:
+0 0 15px gold,
+0 0 40px gold;
+
+margin-bottom:15px;
+
+}
+
+#winner p{
+
+color:white;
+font-size:22px;
+margin-bottom:35px;
+
+}
+
+#winner button{
+
+padding:15px 45px;
+
+font-size:22px;
+
+border:none;
+
+border-radius:50px;
+
+cursor:pointer;
+
+background:#ff4da6;
+
+color:white;
+
+transition:.3s;
+
+}
+
+#winner button:hover{
+
+transform:scale(1.08);
+
+box-shadow:0 0 30px hotpink;
+
+}
+
+@keyframes fade{
+
+from{
+
+opacity:0;
+
+}
+
+to{
+
+opacity:1;
+
+}
+
+}
+
+}
+
+</style>
+
+</head>
+<body>
+
+<div class="grid"></div>
+
+<script>
+
+// Hidden names (3 of each)
+
+const names=[
+"Zaina","Zaina","Zaina",
+"Hasan","Hasan","Hasan",
+"Mama","Mama","Mama"
+];
+
+// Box colors
+
+const colors=[
+"red",
+"green",
+"blue",
+"yellow",
+"purple",
+"orange",
+"cyan",
+"pink",
+"white"
+];
+
+// Shuffle function
+
+function shuffle(array){
+
+for(let i=array.length-1;i>0;i--){
+
+const j=Math.floor(Math.random()*(i+1));
+
+[array[i],array[j]]=[array[j],array[i]];
+
+}
+
+}
+
+// Shuffle names
+
+shuffle(names);
+
+// Audio
+
+const AudioContext=window.AudioContext||window.webkitAudioContext;
+
+const audioCtx=new AudioContext();
+
+const notes=[
+261.63,
+293.66,
+329.63,
+349.23,
+392,
+440,
+493.88,
+523.25,
+587.33
+];
+// Background victory music
+
+const victoryMusic = new Audio("musex.mp3");
+
+victoryMusic.loop = true;
+victoryMusic.volume = 0.45;
+
+function play(freq){
+
+const osc=audioCtx.createOscillator();
+
+const gain=audioCtx.createGain();
+
+osc.type="sine";
+
+osc.frequency.value=freq;
+
+gain.gain.setValueAtTime(.0001,audioCtx.currentTime);
+
+gain.gain.exponentialRampToValueAtTime(.35,audioCtx.currentTime+.02);
+
+gain.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+.45);
+
+osc.connect(gain);
+
+gain.connect(audioCtx.destination);
+
+osc.start();
+
+osc.stop(audioCtx.currentTime+.45);
+
+}
+
+// Build board
+
+const grid=document.querySelector(".grid");
+
+let current=[];
+
+let solvedGroups=0;
+
+for(let i=0;i<9;i++){
+
+const pad=document.createElement("div");
+
+pad.className=`pad ${colors[i]}`;
+
+pad.dataset.name=names[i];
+
+pad.dataset.note=notes[i];
+
+pad.innerHTML="?";
+
+grid.appendChild(pad);
+
+}
+
+// Click
+
+document.querySelectorAll(".pad").forEach(pad=>{
+
+pad.onclick=function(){
+
+audioCtx.resume();
+
+if(this.classList.contains("matched")) return;
+
+if(this.classList.contains("opened")) return;
+
+play(this.dataset.note);
+
+this.classList.add("opened","flash");
+
+this.innerHTML=this.dataset.name;
+
+setTimeout(()=>{
+
+this.classList.remove("flash");
+
+},150);
+
+current.push(this);
+
+// Wrong name
+
+if(current.length>=2){
+
+const first=current[0].dataset.name;
+
+const latest=current[current.length-1].dataset.name;
+
+if(first!==latest){
+
+setTimeout(()=>{
+
+current.forEach(box=>{
+
+box.innerHTML="?";
+
+box.classList.remove("opened");
+
+});
+
+current=[];
+
+},700);
+
+return;
+
+}
+
+}
+
+// Correct 3 in a row
+
+if(current.length===3){
+
+current.forEach(box=>{
+
+box.classList.add("matched");
+
+});
+
+current=[];
+
+solvedGroups++;
+
+if(solvedGroups===3){
+
+setTimeout(()=>{
+
+victoryMusic.play();
+
+document.body.insertAdjacentHTML("beforeend",`
+
+<div id="winner">
+
+<h1>🎉 Congratulations! 🎉</h1>
+
+<p>You found all the hidden names ❤️</p>
+
+<button onclick="location.reload()">
+
+Play Again
+
+</button>
+
+</div>
+
+`);
+
+},300);
+
+}
+}
+
+}
+
+});
+
+</script>
+
+</body>
+</html>
